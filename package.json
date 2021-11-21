@@ -1,7 +1,7 @@
 {
-  "name": "WidgetTeams",
+  "name": "WidgetTeamRandomizer",
   "version": "1.0.0",
-  "description": "WidgetTeams",
+  "description": "A FigJam Widget that randomizes users into teams",
   "scripts": {
     "test": "npm run tsc && npm run build",
     "format": "prettier --write .",

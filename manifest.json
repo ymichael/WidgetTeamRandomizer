@@ -1,6 +1,6 @@
 {
-  "name": "Teams",
-  "id": "widget-teams",
+  "name": "Team Randomizer",
+  "id": "widget-team-randomizer",
   "api": "1.0.0",
   "editorType": ["figjam"],
   "permissions": ["currentuser", "activeusers"],
