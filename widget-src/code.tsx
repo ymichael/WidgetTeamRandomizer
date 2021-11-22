@@ -222,7 +222,7 @@ function Widget() {
         case "SET_CUSTOM_NAMES":
           const updatedCustomNames = msg.value.filter((x) => x && x.trim());
           setCustomNames(updatedCustomNames);
-          if (updatedCustomNames.length !== 0) {
+          if (shouldUseCustomNames && updatedCustomNames.length !== 0) {
             setTeams(
               getRandomTeams(
                 updatedCustomNames.map((x) => ({ name: x })),
