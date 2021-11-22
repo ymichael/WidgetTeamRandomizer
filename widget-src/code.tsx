@@ -3,6 +3,7 @@ import {
   minusSvg,
   shuffleSvg,
   settingsSvg,
+  shareSvg,
   COLORS,
   INITIAL_COLOR,
   shuffle,
@@ -20,6 +21,7 @@ const {
   usePropertyMenu,
   useEffect,
   waitForTask,
+  useWidgetId,
 } = widget;
 
 const DEBUG = true;
@@ -123,7 +125,69 @@ function InitialView({
   );
 }
 
+function Team({
+  teamIdx,
+  team,
+}: {
+  teamIdx: number;
+  team: Pick<User, "name">[];
+}) {
+  return (
+    <AutoLayout
+      key={teamIdx}
+      direction="vertical"
+      horizontalAlignItems="center"
+      verticalAlignItems="center"
+      height="hug-contents"
+      padding={30}
+      stroke="#2a2a2a"
+      cornerRadius={20}
+      spacing={20}
+      fill={COLORS[teamIdx % COLORS.length]}
+      strokeWidth={4}
+    >
+      <AutoLayout
+        direction="vertical"
+        spacing={0}
+        fill="#FFF"
+        padding={{
+          horizontal: 60,
+          vertical: 40,
+        }}
+        stroke="#2a2a2a"
+        cornerRadius={8}
+        strokeWidth={4}
+      >
+        <Frame width={150} height={1} />
+        {team.map((user, idx) => {
+          return (
+            <AutoLayout key={idx} padding={{ bottom: 15 }}>
+              <Text
+                fontWeight="bold"
+                fontFamily="Comfortaa"
+                fontSize={20}
+                fill="#2a2a2a"
+                horizontalAlignText="center"
+              >
+                {user.name}
+              </Text>
+            </AutoLayout>
+          );
+        })}
+      </AutoLayout>
+      <Text fontFamily="Caveat" fontWeight="bold" fontSize={70}>
+        {teamIdx + 1}
+      </Text>
+    </AutoLayout>
+  );
+}
+
 function Widget() {
+  const widgetId = useWidgetId();
+  const [singleTeam, setSingleTeam] = useSyncedState<null | {
+    teamIdx: number;
+    users: Pick<User, "name">[];
+  }>("singleTeam", null);
   const [controllerColor] = useSyncedState("controllerColor", INITIAL_COLOR);
   const [numTeams, setNumTeams] = useSyncedState("numTeams", 2);
   const [shouldUseCustomNames, setShouldUseCustomNames] =
@@ -132,6 +196,7 @@ function Widget() {
     "customNames",
     []
   );
+  const [teams, setTeams] = useSyncedState("teams", []);
 
   const getActiveUsers = (shouldUseCustomNames): TUser[] => {
     return shouldUseCustomNames && customNames.length !== 0
@@ -143,7 +208,6 @@ function Widget() {
 
   const activeUsers = getActiveUsers(shouldUseCustomNames);
 
-  const [teams, setTeams] = useSyncedState("teams", []);
   useEffect(() => {
     figma.ui.onmessage = (msg: any) => {
       switch (msg.type) {
@@ -169,34 +233,41 @@ function Widget() {
       }
     };
   });
-  console.log({ customNames });
   usePropertyMenu(
-    [
-      {
-        itemType: "action",
-        propertyName: "addOneTeam",
-        tooltip: "Add a team",
-        icon: addSvg,
-      },
-      numTeams > 2 && {
-        itemType: "action",
-        propertyName: "removeOneTeam",
-        tooltip: "Remove a team",
-        icon: minusSvg,
-      },
-      teams.length !== 0 && {
-        itemType: "action",
-        propertyName: "shuffleTeams",
-        tooltip: "Shuffle teams",
-        icon: shuffleSvg,
-      },
-      {
-        itemType: "action",
-        propertyName: "editUsers",
-        tooltip: "Edit users",
-        icon: settingsSvg,
-      },
-    ].filter(Boolean) as WidgetPropertyMenuItem[],
+    singleTeam
+      ? []
+      : ([
+          {
+            itemType: "action",
+            propertyName: "addOneTeam",
+            tooltip: "Add a team",
+            icon: addSvg,
+          },
+          numTeams > 2 && {
+            itemType: "action",
+            propertyName: "removeOneTeam",
+            tooltip: "Remove a team",
+            icon: minusSvg,
+          },
+          teams.length !== 0 && {
+            itemType: "action",
+            propertyName: "shuffleTeams",
+            tooltip: "Shuffle teams",
+            icon: shuffleSvg,
+          },
+          teams.length !== 0 && {
+            itemType: "action",
+            propertyName: "splitWidget",
+            tooltip: "Break into teams",
+            icon: shareSvg,
+          },
+          {
+            itemType: "action",
+            propertyName: "editUsers",
+            tooltip: "Edit users",
+            icon: settingsSvg,
+          },
+        ].filter(Boolean) as WidgetPropertyMenuItem[]),
     ({ propertyName }) => {
       if (propertyName === "addOneTeam") {
         setNumTeams(numTeams + 1);
@@ -223,68 +294,45 @@ function Widget() {
             ${__html__}
           `);
         });
+      } else if (propertyName === "splitWidget") {
+        const widget = figma.getNodeById(widgetId) as WidgetNode;
+        const offset = Math.floor(widget.width / teams.length) + 10;
+        const [x, y] = [widget.x, widget.y];
+        teams.forEach((team, idx) => {
+          const singleTeam = { teamIdx: idx, users: team };
+          if (idx === 0) {
+            setSingleTeam(singleTeam);
+          } else {
+            const override = { singleTeam };
+            const clone = widget.cloneWidget(override);
+            clone.x = x + offset * idx;
+            clone.y = y;
+          }
+        });
       }
     }
   );
-  return teams.length === 0 ? (
-    <InitialView
-      color={controllerColor}
-      numTeams={numTeams}
-      onChoose={() => {
-        setTeams(getRandomTeams(activeUsers, numTeams));
-      }}
-    />
-  ) : (
+
+  if (singleTeam) {
+    return <Team teamIdx={singleTeam.teamIdx} team={singleTeam.users} />;
+  }
+
+  if (teams.length === 0) {
+    return (
+      <InitialView
+        color={controllerColor}
+        numTeams={numTeams}
+        onChoose={() => {
+          setTeams(getRandomTeams(activeUsers, numTeams));
+        }}
+      />
+    );
+  }
+
+  return (
     <AutoLayout direction="horizontal" spacing={20}>
       {teams.map((team, idx) => {
-        return (
-          <AutoLayout
-            key={idx}
-            direction="vertical"
-            horizontalAlignItems="center"
-            verticalAlignItems="center"
-            height="hug-contents"
-            padding={30}
-            stroke="#2a2a2a"
-            cornerRadius={20}
-            spacing={20}
-            fill={COLORS[idx % COLORS.length]}
-            strokeWidth={4}
-          >
-            <AutoLayout
-              direction="vertical"
-              spacing={0}
-              fill="#FFF"
-              padding={{
-                horizontal: 60,
-                vertical: 40,
-              }}
-              stroke="#2a2a2a"
-              cornerRadius={8}
-              strokeWidth={4}
-            >
-              <Frame width={150} height={1} />
-              {team.map((user, idx) => {
-                return (
-                  <AutoLayout key={idx} padding={{ bottom: 15 }}>
-                    <Text
-                      fontWeight="bold"
-                      fontFamily="Comfortaa"
-                      fontSize={20}
-                      fill="#2a2a2a"
-                      horizontalAlignText="center"
-                    >
-                      {user.name}
-                    </Text>
-                  </AutoLayout>
-                );
-              })}
-            </AutoLayout>
-            <Text fontFamily="Caveat" fontWeight="bold" fontSize={70}>
-              {idx + 1}
-            </Text>
-          </AutoLayout>
-        );
+        return <Team key={idx} teamIdx={idx} team={team} />;
       })}
     </AutoLayout>
   );
