@@ -1,3 +1,5 @@
 dist/
 node_modules/
 out/
+manifest-staging.json
+manifest-prod.json
