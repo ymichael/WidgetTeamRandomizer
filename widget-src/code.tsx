@@ -24,7 +24,7 @@ const {
   useWidgetId,
 } = widget;
 
-const DEBUG = true;
+const DEBUG = false;
 
 function InitialView({
   color,
