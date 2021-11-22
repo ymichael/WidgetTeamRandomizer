@@ -1,51 +1,35 @@
+import {
+  addSvg,
+  minusSvg,
+  shuffleSvg,
+  settingsSvg,
+  COLORS,
+  INITIAL_COLOR,
+  shuffle,
+  TEST_ACTIVE_USERS,
+  getRandomTeams,
+  TUser,
+} from "./utils";
+
 const { widget } = figma;
-const { Frame, AutoLayout, Text, useSyncedState, usePropertyMenu } = widget;
+const {
+  Frame,
+  AutoLayout,
+  Text,
+  useSyncedState,
+  usePropertyMenu,
+  useEffect,
+  waitForTask,
+} = widget;
 
-const addSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 34 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="9" cy="7" r="4"></circle>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-    <line x1="29" y1="8" x2="29" y2="14"></line>
-    <line x1="32" y1="11" x2="26" y2="11"></line>
-  </svg>
-`;
-
-const minusSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 34 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-    <circle cx="9" cy="7" r="4"></circle>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-    <line x1="32" y1="11" x2="26" y2="11"></line>
-  </svg>
-`;
-
-const shuffleSvg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="-5 -5 34 34" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-shuffle">
-    <polyline points="16 3 21 3 21 8"></polyline>
-    <line x1="4" y1="20" x2="21" y2="3"></line>
-    <polyline points="21 16 21 21 16 21"></polyline>
-    <line x1="15" y1="15" x2="21" y2="21"></line>
-    <line x1="4" y1="4" x2="9" y2="9"></line>
-  </svg>
-`;
-
-const COLORS = [
-  "#F24E1E",
-  "#1ABCFE",
-  "#0DE793",
-  "#A259FF",
-  "#FF7262",
-  "#E5E5E5",
-];
-const INITIAL_COLOR = COLORS[Math.floor(Math.random() * COLORS.length)];
+const DEBUG = true;
 
 function InitialView({
+  color,
   numTeams,
   onChoose,
 }: {
+  color: string;
   numTeams: number;
   onChoose: () => void;
 }) {
@@ -62,7 +46,7 @@ function InitialView({
       stroke="#2a2a2a"
       cornerRadius={100}
       spacing={10}
-      fill={INITIAL_COLOR}
+      fill={color}
       strokeWidth={4}
     >
       <Frame height={100} width={100}>
@@ -139,83 +123,65 @@ function InitialView({
   );
 }
 
-const TEST_ACTIVE_USERS = [
-  { name: "Colleen Lawrence" },
-  { name: "Jon Lambert" },
-  { name: "Pat Adkins" },
-  { name: "Thomas Hines" },
-  { name: "Kara Hansen" },
-  { name: "Emmett Frank" },
-  { name: "Gertrude Wilkerson" },
-  { name: "Dorothy Ramirez" },
-  { name: "Courtney Taylor" },
-  { name: "Devin Rice" },
-  { name: "Calvin Lambert" },
-  { name: "Jacqueline Hamilton" },
-  { name: "Amelia Henderson" },
-  { name: "Rosie Ross" },
-  { name: "Charlene Pierce" },
-  { name: "Horace Hayes" },
-  { name: "Lee Marsh" },
-  { name: "Brenda Vasquez" },
-  { name: "Homer Barnes" },
-  { name: "Rickey Fitzgerald" },
-];
-
-function shuffle<T>(arr: T[]): T[] {
-  const array = [...arr];
-  let currentIndex = array.length,
-    randomIndex;
-
-  // While there remain elements to shuffle...
-  while (currentIndex != 0) {
-    // Pick a remaining element...
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-
-    // And swap it with the current element.
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
-  }
-  return array;
-}
-
-function getRandomTeams(numTeams: number): Pick<User, "name">[][] {
-  const ret = [];
-  const shuffledActiveUsers = shuffle(TEST_ACTIVE_USERS);
-  // const shuffledActiveUsers = shuffle(figma.activeUsers);
-
-  // Pad the list
-  const numPhantom = numTeams - (shuffledActiveUsers.length % numTeams);
-  for (let i = 0; i < numPhantom; i++) {
-    shuffledActiveUsers.push({ name: " " });
-  }
-
-  shuffledActiveUsers.forEach((user, idx) => {
-    const teamIdx = idx % numTeams;
-    ret[teamIdx] = ret[teamIdx] || [];
-    ret[teamIdx].push(user);
-  });
-  return ret;
-}
-
 function Widget() {
+  const [controllerColor] = useSyncedState("controllerColor", INITIAL_COLOR);
   const [numTeams, setNumTeams] = useSyncedState("numTeams", 2);
+  const [shouldUseCustomNames, setShouldUseCustomNames] =
+    useSyncedState<boolean>("shouldUseCustomNames", false);
+  const [customNames, setCustomNames] = useSyncedState<string[]>(
+    "customNames",
+    []
+  );
+
+  const getActiveUsers = (shouldUseCustomNames): TUser[] => {
+    return shouldUseCustomNames && customNames.length !== 0
+      ? customNames.map((x) => ({ name: x }))
+      : DEBUG
+      ? TEST_ACTIVE_USERS
+      : figma.activeUsers;
+  };
+
+  const activeUsers = getActiveUsers(shouldUseCustomNames);
+
   const [teams, setTeams] = useSyncedState("teams", []);
+  useEffect(() => {
+    figma.ui.onmessage = (msg: any) => {
+      switch (msg.type) {
+        case "RESIZE":
+          figma.ui.resize(msg.width, msg.height);
+          break;
+        case "SET_SHOULD_USE_CUSTOM_NAMES":
+          setShouldUseCustomNames(msg.value);
+          setTeams(getRandomTeams(getActiveUsers(msg.value), numTeams));
+          break;
+        case "SET_CUSTOM_NAMES":
+          const updatedCustomNames = msg.value.filter((x) => x && x.trim());
+          setCustomNames(updatedCustomNames);
+          if (updatedCustomNames.length !== 0) {
+            setTeams(
+              getRandomTeams(
+                updatedCustomNames.map((x) => ({ name: x })),
+                numTeams
+              )
+            );
+          }
+          break;
+      }
+    };
+  });
+  console.log({ customNames });
   usePropertyMenu(
     [
       {
         itemType: "action",
         propertyName: "addOneTeam",
-        tooltip: "Add one team",
+        tooltip: "Add a team",
         icon: addSvg,
       },
       numTeams > 2 && {
         itemType: "action",
         propertyName: "removeOneTeam",
-        tooltip: "Remove one team",
+        tooltip: "Remove a team",
         icon: minusSvg,
       },
       teams.length !== 0 && {
@@ -224,28 +190,48 @@ function Widget() {
         tooltip: "Shuffle teams",
         icon: shuffleSvg,
       },
+      {
+        itemType: "action",
+        propertyName: "editUsers",
+        tooltip: "Edit users",
+        icon: settingsSvg,
+      },
     ].filter(Boolean) as WidgetPropertyMenuItem[],
     ({ propertyName }) => {
       if (propertyName === "addOneTeam") {
         setNumTeams(numTeams + 1);
         if (teams.length !== 0) {
-          setTeams(getRandomTeams(numTeams + 1));
+          setTeams(getRandomTeams(activeUsers, numTeams + 1));
         }
       } else if (propertyName === "removeOneTeam") {
         setNumTeams(numTeams - 1);
         if (teams.length !== 0) {
-          setTeams(getRandomTeams(numTeams - 1));
+          setTeams(getRandomTeams(activeUsers, numTeams - 1));
         }
       } else if (propertyName === "shuffleTeams") {
-        setTeams(getRandomTeams(numTeams));
+        setTeams(getRandomTeams(activeUsers, numTeams));
+      } else if (propertyName === "editUsers") {
+        return new Promise(() => {
+          figma.showUI(`
+            <script>
+              window.widgetPayload = {
+                color: ${JSON.stringify(controllerColor)},
+                activeUsers: ${JSON.stringify(activeUsers)},
+                useCustom: ${JSON.stringify(shouldUseCustomNames)},
+              };
+            </script>
+            ${__html__}
+          `);
+        });
       }
     }
   );
   return teams.length === 0 ? (
     <InitialView
+      color={controllerColor}
       numTeams={numTeams}
       onChoose={() => {
-        setTeams(getRandomTeams(numTeams));
+        setTeams(getRandomTeams(activeUsers, numTeams));
       }}
     />
   ) : (

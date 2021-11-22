@@ -1,0 +1,28 @@
+.App {
+  display: flex;
+  flex-direction: column;
+}
+
+.flexCol {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  padding: 10px;
+  align-items: center;
+}
+
+.formRow label {
+  font-weight: 500;
+  font-size: 16px;
+  user-select: none;
+}
+
+.formRow textarea {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
