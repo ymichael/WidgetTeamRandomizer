@@ -129,6 +129,7 @@ function Team({
   teamIdx,
   team,
 }: {
+  key?: any;
   teamIdx: number;
   team: Pick<User, "name">[];
 }) {
