@@ -288,7 +288,7 @@ function Widget() {
             <script>
               window.widgetPayload = {
                 color: ${JSON.stringify(controllerColor)},
-                activeUsers: ${JSON.stringify(activeUsers)},
+                activeUsers: ${JSON.stringify(activeUsers.map((x) => x.name))},
                 useCustom: ${JSON.stringify(shouldUseCustomNames)},
               };
             </script>

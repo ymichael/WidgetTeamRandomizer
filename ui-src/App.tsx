@@ -54,7 +54,7 @@ function App() {
               setActiveUsers(newActiveUsers);
             }}
           >
-            {activeUsers.map((x) => x.name).join("\n")}
+            {activeUsers.join("\n")}
           </textarea>
         </div>
       </div>
