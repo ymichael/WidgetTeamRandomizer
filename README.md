@@ -1,6 +1,8 @@
 # Team Randomizer FigJam Widget
 
-Install and use this widget here: TODO
+![](https://www.figma.com/community/widget/1044462585017609844/thumbnail)
+
+Install and use this widget here: https://www.figma.com/community/widget/1044462585017609844
 
 ## Getting Started
 
