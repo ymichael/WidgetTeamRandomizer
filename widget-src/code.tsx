@@ -189,7 +189,10 @@ function Widget() {
     teamIdx: number;
     users: Pick<User, "name">[];
   }>("singleTeam", null);
-  const [controllerColor] = useSyncedState("controllerColor", INITIAL_COLOR);
+  const [controllerColor, setControllerColor] = useSyncedState(
+    "controllerColor",
+    INITIAL_COLOR
+  );
   const [numTeams, setNumTeams] = useSyncedState("numTeams", 2);
   const [shouldUseCustomNames, setShouldUseCustomNames] =
     useSyncedState<boolean>("shouldUseCustomNames", false);
@@ -238,6 +241,13 @@ function Widget() {
     singleTeam
       ? []
       : ([
+          teams.length === 0 && {
+            itemType: "color-selector",
+            propertyName: "changeColor",
+            tooltip: "Color",
+            selectedOption: controllerColor,
+            options: COLORS.map((x) => ({ tooltip: x, option: x })),
+          },
           {
             itemType: "action",
             propertyName: "addOneTeam",
@@ -269,8 +279,10 @@ function Widget() {
             icon: settingsSvg,
           },
         ].filter(Boolean) as WidgetPropertyMenuItem[]),
-    ({ propertyName }) => {
-      if (propertyName === "addOneTeam") {
+    ({ propertyName, propertyValue }) => {
+      if (propertyName === "changeColor") {
+        setControllerColor(propertyValue);
+      } else if (propertyName === "addOneTeam") {
         setNumTeams(numTeams + 1);
         if (teams.length !== 0) {
           setTeams(getRandomTeams(activeUsers, numTeams + 1));
